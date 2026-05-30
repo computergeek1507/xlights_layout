@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Networks computer="DESKTOP-01D8AJ4" GlobalFPPProxy="" GlobalForceLocalIP="" AutoUpdateFromBase="0" BaseShowDir="" BaseShowDirRelative="">
+	<suppressframes frames="10" />
+	<Controller Id="64004" Name="FPPP5" Description="" Type="Ethernet" Vendor="FPP" Model="LED Panels" Variant="" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.201" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.201" BaudRate="64004" NetworkType="DDP" MaxChannels="110592" />
+	</Controller>
+	<Controller Id="64005" Name="TuneTo" Description="" Type="Ethernet" Vendor="FPP" Model="LED Panels" Variant="" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.200" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.200" BaudRate="64005" NetworkType="DDP" MaxChannels="3117" />
+	</Controller>
+	<Controller Id="64006" Name="TuneToP5" Description="" Type="Ethernet" Vendor="FPP" Model="LED Panels" Variant="" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.202" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.202" BaudRate="64006" NetworkType="DDP" MaxChannels="24576" />
+	</Controller>
+	<Controller Id="64003" Name="House Left" Description="" Type="Ethernet" Vendor="ScottNation" Model="PB16" Variant="Expansion" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.205" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.205" BaudRate="64003" NetworkType="DDP" MaxChannels="7176" />
+	</Controller>
+	<Controller Id="64001" Name="House Right" Description="" Type="Ethernet" Vendor="ScottNation" Model="PB16" Variant="Expansion" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.207" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.207" BaudRate="64001" NetworkType="DDP" MaxChannels="4002" />
+	</Controller>
+	<Controller Id="64002" Name="Tree" Description="" Type="Ethernet" Vendor="ScottNation" Model="PB16v2" Variant="Expansion" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.208" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.208" BaudRate="64002" NetworkType="DDP" MaxChannels="12174" />
+	</Controller>
+	<Controller Id="64007" Name="Yard" Description="" Type="Ethernet" Vendor="ScottNation" Model="PB16" Variant="Expansion" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.209" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.209" BaudRate="64007" NetworkType="DDP" MaxChannels="4101" />
+	</Controller>
+	<Controller Id="64008" Name="Serial" Description="" Type="Ethernet" Vendor="ScottNation" Model="PB16" Variant="No Expansion" AutoSize="1" FromBase="0" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="xLights Only" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.210" Protocol="DDP" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="">
+		<network ChannelsPerPacket="1440" KeepChannelNumbers="1" ComPort="192.168.1.210" BaudRate="64008" NetworkType="DDP" MaxChannels="15" />
+	</Controller>
+	<Controller Id="1" Name="Ethernet_" Description="" Type="Ethernet" Vendor="FPP" Model="FPP Player Only" Variant="" AutoSize="1" FromBase="0" FullxLightsControl="TRUE" DefaultBrightnessUnderFullControl="100" DefaultGammaUnderFullControl="1" ActiveState="Active" AutoLayout="1" AutoUpload="0" SuppressDuplicates="0" Monitor="1" IP="192.168.1.5" Protocol="Player Only" FPPProxy="" Priority="100" Version="1" Expanded="FALSE" UPS="FALSE" ForceLocalIP="" />
+</Networks>
