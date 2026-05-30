@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-import '../ui/condensed_tab.dart';
+import '../models/prop.dart';
 import 'layout_store.dart';
 
 /// Builds a printable PDF of either report view. Used by `Printing.layoutPdf`,
@@ -91,7 +91,7 @@ class ReportPdf {
     if (data.notAssigned.isNotEmpty) {
       widgets.add(_groupHeading('not assigned', italic: true));
       widgets.add(_groupBox([
-        for (final p in data.notAssigned) ['generic Port #0', p.name],
+        for (final p in data.notAssigned) _Row.prop('generic Port #0', p.name),
       ]));
       widgets.add(pw.Text(
         '* Port 0 means the prop was not assigned to a port in your layout',
@@ -101,25 +101,44 @@ class ReportPdf {
     }
 
     for (final group in data.groups) {
-      final rows = <List<String>>[];
-      for (final port in group.sortedPorts) {
-        final props = group.ports[port]!;
-        for (var i = 0; i < props.length; i++) {
-          rows.add([
-            i == 0 ? '${portWord(props[i].protocol)} Port #$port' : '',
-            props[i].name,
-          ]);
-        }
-      }
-      for (final p in group.unported) {
-        rows.add([p.displayAs, p.name]);
-      }
       widgets.add(_groupHeading(group.name));
-      widgets.add(_groupBox(rows));
+      widgets.add(_groupBox(_rowsFor(group)));
       widgets.add(pw.SizedBox(height: 12));
     }
 
     return widgets;
+  }
+
+  static List<_Row> _rowsFor(ControllerGroup group) {
+    final rows = <_Row>[];
+
+    void addPortProps(List<XProp> props) {
+      for (var i = 0; i < props.length; i++) {
+        rows.add(_Row.prop(i == 0 ? condensedPortLabel(props[i]) : '', props[i].name));
+      }
+    }
+
+    void portSection(String title, Map<int, List<XProp>> ports) {
+      if (ports.isEmpty) return;
+      rows.add(_Row.header(title));
+      for (final port in ControllerGroup.sortedKeys(ports)) {
+        addPortProps(ports[port]!);
+      }
+    }
+
+    portSection('String Ports', group.stringPorts);
+    for (final receiver in group.sortedReceivers) {
+      rows.add(_Row.header(group.smartReceiverLabel(receiver)));
+      for (final port in receiver.sortedPorts) {
+        addPortProps(receiver.ports[port]!);
+      }
+    }
+    portSection('LED Panel Matrix', group.panelPorts);
+    portSection('Serial Ports', group.serialPorts);
+    for (final p in group.unported) {
+      rows.add(_Row.prop(p.displayAs, p.name));
+    }
+    return rows;
   }
 
   // ---- Shared building blocks ----------------------------------------------
@@ -159,7 +178,7 @@ class ReportPdf {
     );
   }
 
-  static pw.Widget _groupBox(List<List<String>> rows) {
+  static pw.Widget _groupBox(List<_Row> rows) {
     return pw.Container(
       decoration: pw.BoxDecoration(
         border: pw.Border.all(color: PdfColors.blue900, width: 1),
@@ -168,28 +187,54 @@ class ReportPdf {
       padding: const pw.EdgeInsets.all(4),
       child: pw.Table(
         columnWidths: const {
-          0: pw.FixedColumnWidth(120),
+          0: pw.FixedColumnWidth(130),
           1: pw.FlexColumnWidth(),
         },
         children: [
           for (var i = 0; i < rows.length; i++)
-            pw.TableRow(
-              decoration: i.isOdd
-                  ? const pw.BoxDecoration(color: PdfColors.grey100)
-                  : null,
-              children: [
-                pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
-                  child: pw.Text(rows[i][0], style: const pw.TextStyle(fontSize: 9)),
-                ),
-                pw.Padding(
-                  padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
-                  child: pw.Text(rows[i][1], style: const pw.TextStyle(fontSize: 9)),
-                ),
-              ],
-            ),
+            if (rows[i].isHeader)
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.blue50),
+                children: [
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 3, horizontal: 3),
+                    child: pw.Text(rows[i].col0,
+                        style: pw.TextStyle(
+                            fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                  ),
+                  pw.SizedBox(),
+                ],
+              )
+            else
+              pw.TableRow(
+                decoration: i.isOdd
+                    ? const pw.BoxDecoration(color: PdfColors.grey100)
+                    : null,
+                children: [
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+                    child: pw.Text(rows[i].col0, style: const pw.TextStyle(fontSize: 9)),
+                  ),
+                  pw.Padding(
+                    padding: const pw.EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+                    child: pw.Text(rows[i].col1, style: const pw.TextStyle(fontSize: 9)),
+                  ),
+                ],
+              ),
         ],
       ),
     );
   }
+}
+
+/// A row in a condensed group box: a bold section header or a port/name pair.
+class _Row {
+  _Row.header(this.col0)
+      : col1 = '',
+        isHeader = true;
+  _Row.prop(this.col0, this.col1) : isHeader = false;
+
+  final String col0;
+  final String col1;
+  final bool isHeader;
 }

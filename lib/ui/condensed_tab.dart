@@ -4,22 +4,9 @@ import '../models/prop.dart';
 import '../services/layout_store.dart';
 import 'prop_icons.dart';
 
-/// Maps a connection protocol to the port-label word xLights/FPP use.
-String portWord(String protocol) {
-  final p = protocol.toLowerCase();
-  if (p.contains('dmx') ||
-      p.contains('serial') ||
-      p.contains('renard') ||
-      p.contains('lor') ||
-      p.contains('pixelnet')) {
-    return 'Serial';
-  }
-  if (p.isEmpty) return 'generic';
-  return 'String';
-}
-
-/// "Condensed" report: props grouped by controller, then by port. Unassigned
-/// props are shown first under a "not assigned" header.
+/// "Condensed" report: props grouped by controller, then split into String /
+/// Smart Receiver / LED Panel Matrix / Serial sections, each port labelled.
+/// Unassigned props are shown first under a "not assigned" header.
 class CondensedTab extends StatelessWidget {
   const CondensedTab({super.key, required this.store});
 
@@ -36,56 +23,92 @@ class CondensedTab extends StatelessWidget {
             title: 'not assigned',
             italic: true,
             footnote: '* Port 0 means the prop was not assigned to a port in your layout',
-            rows: [
+            items: [
               for (final p in data.notAssigned)
-                _PropRow(
-                  shape: p.shape,
-                  port: 'generic Port #0',
-                  name: p.name,
-                ),
+                _PropItem(shape: p.shape, port: 'generic Port #0', name: p.name),
             ],
           ),
         for (final group in data.groups)
-          _GroupCard(
-            title: group.name,
-            rows: _rowsFor(group),
-          ),
+          _GroupCard(title: group.name, items: _itemsFor(group)),
       ],
     );
   }
 
-  List<_PropRow> _rowsFor(ControllerGroup group) {
-    final rows = <_PropRow>[];
-    for (final port in group.sortedPorts) {
-      final props = group.ports[port]!;
-      for (var i = 0; i < props.length; i++) {
-        final p = props[i];
-        rows.add(_PropRow(
-          shape: p.shape,
-          // Only the first prop on a port shows the port label; daisy-chained
-          // props below it share the port and show a blank label.
-          port: i == 0 ? '${portWord(p.protocol)} Port #$port' : '',
-          name: p.name,
-        ));
+  /// Flattens a controller into ordered section headers + prop rows: String
+  /// ports first, then each Smart Receiver (A–F), then LED Panel Matrix, then
+  /// Serial ports, then any unported props.
+  List<_Item> _itemsFor(ControllerGroup group) {
+    final items = <_Item>[];
+
+    void portSection(String title, Map<int, List<XProp>> ports) {
+      if (ports.isEmpty) return;
+      items.add(_HeaderItem(title));
+      for (final port in ControllerGroup.sortedKeys(ports)) {
+        _addPortProps(items, ports[port]!);
       }
     }
-    for (final p in group.unported) {
-      rows.add(_PropRow(shape: p.shape, port: p.displayAs, name: p.name));
+
+    portSection('String Ports', group.stringPorts);
+
+    for (final receiver in group.sortedReceivers) {
+      items.add(_HeaderItem(group.smartReceiverLabel(receiver), smart: true));
+      for (final port in receiver.sortedPorts) {
+        _addPortProps(items, receiver.ports[port]!);
+      }
     }
-    return rows;
+
+    portSection('LED Panel Matrix', group.panelPorts);
+    portSection('Serial Ports', group.serialPorts);
+
+    for (final p in group.unported) {
+      items.add(_PropItem(shape: p.shape, port: p.displayAs, name: p.name));
+    }
+    return items;
   }
+
+  /// Adds one row per prop on a port; only the first row carries the port
+  /// label (daisy-chained props below share it and show a blank label).
+  void _addPortProps(List<_Item> items, List<XProp> props) {
+    for (var i = 0; i < props.length; i++) {
+      items.add(_PropItem(
+        shape: props[i].shape,
+        port: i == 0 ? condensedPortLabel(props[i]) : '',
+        name: props[i].name,
+      ));
+    }
+  }
+}
+
+/// A flattened row in a controller card: either a section header or a prop.
+sealed class _Item {}
+
+class _HeaderItem extends _Item {
+  _HeaderItem(this.text, {this.smart = false});
+
+  final String text;
+
+  /// Smart-receiver headers get the arrow prefix + tinted background.
+  final bool smart;
+}
+
+class _PropItem extends _Item {
+  _PropItem({required this.shape, required this.port, required this.name});
+
+  final PropShape shape;
+  final String port;
+  final String name;
 }
 
 class _GroupCard extends StatelessWidget {
   const _GroupCard({
     required this.title,
-    required this.rows,
+    required this.items,
     this.italic = false,
     this.footnote,
   });
 
   final String title;
-  final List<_PropRow> rows;
+  final List<_Item> items;
   final bool italic;
   final String? footnote;
 
@@ -115,9 +138,10 @@ class _GroupCard extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             child: Column(
               children: [
-                for (var i = 0; i < rows.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  rows[i],
+                for (var i = 0; i < items.length; i++) ...[
+                  if (i > 0 && items[i] is _PropItem && items[i - 1] is _PropItem)
+                    const Divider(height: 1),
+                  _ItemRow(items[i]),
                 ],
                 if (footnote != null)
                   Padding(
@@ -137,24 +161,45 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-class _PropRow extends StatelessWidget {
-  const _PropRow({required this.shape, required this.port, required this.name});
+class _ItemRow extends StatelessWidget {
+  const _ItemRow(this.item);
 
-  final PropShape shape;
-  final String port;
-  final String name;
+  final _Item item;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final i = item;
+    if (i is _HeaderItem) {
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 6, bottom: 2),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+        decoration: i.smart
+            ? BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              )
+            : null,
+        child: Text(
+          i.smart ? '→ ${i.text}' : i.text,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: i.smart ? theme.colorScheme.onPrimaryContainer : null,
+          ),
+        ),
+      );
+    }
+    final p = i as _PropItem;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          PropShapeIcon(shape, size: 20),
+          PropShapeIcon(p.shape, size: 20),
           const SizedBox(width: 10),
-          SizedBox(width: 160, child: Text(port)),
+          SizedBox(width: 170, child: Text(p.port)),
           const SizedBox(width: 8),
-          Expanded(child: Text(name)),
+          Expanded(child: Text(p.name)),
         ],
       ),
     );

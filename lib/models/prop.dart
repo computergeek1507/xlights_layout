@@ -16,6 +16,57 @@ enum PropShape {
   other,
 }
 
+/// How a controller output port is categorised for the report. xLights numbers
+/// serial and string ports independently and treats LED/virtual panel matrices
+/// as their own kind of output.
+enum PortKind { string, serial, panelMatrix, generic }
+
+/// Classifies a `<ControllerConnection Protocol="…">` value into a [PortKind].
+PortKind portKindFor(String protocol) {
+  final p = protocol.toLowerCase();
+  if (p.isEmpty) return PortKind.generic;
+  if (p.contains('dmx') ||
+      p.contains('serial') ||
+      p.contains('renard') ||
+      p.contains('lor') ||
+      p.contains('pixelnet')) {
+    return PortKind.serial;
+  }
+  // "LED Panel Matrix", "Virtual Matrix", … — the whole panel is one output.
+  if (p.contains('matrix')) return PortKind.panelMatrix;
+  return PortKind.string;
+}
+
+/// Controller ports a single smart receiver of [type] occupies, used to render
+/// the "Smart Receiver 25-28A" range. Differential smart receivers (FPP/Falcon)
+/// are 4-port boards — the only width seen in real files — so this is a lookup
+/// with a 4-port default. Add an entry here if a type with a different port
+/// count turns up.
+const _smartReceiverPortCounts = <String, int>{
+  // e.g. 'some_2port_type': 2,
+};
+
+int smartReceiverPortCount(String type) =>
+    _smartReceiverPortCounts[type.toLowerCase()] ?? 4;
+
+/// Port label for a prop in the Condensed report, e.g. `String Port #14`,
+/// `Port #26-27B` (smart receiver), `LED Panel Matrix Port #1`, or
+/// `Serial Port #2 Channel 7`.
+String condensedPortLabel(XProp p) {
+  if (p.smartRemote > 0) return 'Port #${p.portRange}${p.smartRemoteLetter}';
+  switch (p.portKind) {
+    case PortKind.serial:
+      final ch = p.dmxChannel > 0 ? ' Channel ${p.dmxChannel}' : '';
+      return 'Serial Port #${p.port}$ch';
+    case PortKind.panelMatrix:
+      return '${p.protocol} Port #${p.port}';
+    case PortKind.generic:
+      return 'generic Port #${p.port}';
+    case PortKind.string:
+      return 'String Port #${p.portRange}';
+  }
+}
+
 PropShape _shapeFor(String displayAs) {
   switch (displayAs) {
     case 'Arches':
@@ -54,6 +105,10 @@ class XProp {
     required this.modelChain,
     required this.nodeCount,
     required this.channelCount,
+    required this.portSpan,
+    required this.smartRemote,
+    required this.smartRemoteType,
+    required this.dmxChannel,
   });
 
   final String name;
@@ -84,16 +139,44 @@ class XProp {
   final int nodeCount;
   final int channelCount;
 
+  /// Number of consecutive controller ports this model occupies. A matrix wired
+  /// one-string-per-port spans `NumStrings` ports; everything else is 1.
+  final int portSpan;
+
+  /// Smart-remote index from `<ControllerConnection SmartRemote="…">`: 0 = none,
+  /// 1 = A, 2 = B, … (see [smartRemoteLetter]).
+  final int smartRemote;
+
+  /// Smart receiver hardware type, e.g. `fpp_v2` (drives the port-range width).
+  final String smartRemoteType;
+
+  /// Channel within a DMX/serial universe from `<ControllerConnection channel="…">`;
+  /// 0 when not a serial/DMX connection.
+  final int dmxChannel;
+
   PropShape get shape => _shapeFor(displayAs);
+
+  PortKind get portKind => portKindFor(protocol);
+
+  /// Last controller port this model occupies (`port` when [portSpan] is 1).
+  int get endPort => port + portSpan - 1;
+
+  /// `"25"` or `"26-27"` — the numeric part of the port label.
+  String get portRange => portSpan > 1 ? '$port-$endPort' : '$port';
+
+  /// Smart-remote letter (`A`–`F` …) or empty when not on a smart receiver.
+  String get smartRemoteLetter =>
+      smartRemote > 0 ? String.fromCharCode(0x40 + smartRemote) : '';
 
   bool get isAssigned =>
       controllerName.isNotEmpty &&
       controllerName != 'No Controller' &&
       port > 0;
 
-  /// `"ws2811:Port #17"` style string for the Detailed table.
-  String get connectionLabel =>
-      port > 0 ? '${protocol.isEmpty ? 'Port' : protocol}:Port #$port' : '';
+  /// `"ws2811:Port #17"` (or `"ws2811:Port #26-27B"`) for the Detailed table.
+  String get connectionLabel => port > 0
+      ? '${protocol.isEmpty ? 'Port' : protocol}:Port #$portRange$smartRemoteLetter'
+      : '';
 
   /// Whether this prop is chained onto a previous model (so the Condensed
   /// view shows it under the same port with a blank port label).
@@ -109,14 +192,28 @@ class XProp {
     // onto the canonical type names used for shapes and node math.
     final displayAs = calc.normalizeDisplayAs(attr('DisplayAs'));
 
-    // Controller connection child holds the physical port + protocol.
+    // Controller connection child holds the physical port + protocol, plus
+    // smart-remote and serial-channel details when present.
     var port = 0;
     var protocol = '';
+    var smartRemote = 0;
+    var smartRemoteType = '';
+    var dmxChannel = 0;
     final conn = e.findElements('ControllerConnection').firstOrNull;
     if (conn != null) {
       port = int.tryParse(conn.getAttribute('Port')?.trim() ?? '') ?? 0;
       protocol = conn.getAttribute('Protocol')?.trim() ?? '';
+      smartRemote = int.tryParse(conn.getAttribute('SmartRemote')?.trim() ?? '') ?? 0;
+      smartRemoteType = conn.getAttribute('SmartRemoteType')?.trim() ?? '';
+      dmxChannel = int.tryParse(conn.getAttribute('channel')?.trim() ?? '') ?? 0;
     }
+
+    // A model occupies one port per physical string (matrices/trees wired
+    // one-string-per-port, via NumStrings or legacy parm1). Panel matrices are
+    // a single output regardless of string count.
+    final portSpan = portKindFor(protocol) == PortKind.panelMatrix
+        ? 1
+        : calc.portStringCount(displayAs, attrs);
 
     final (startChannel, universe) = _parseStartChannel(attr('StartChannel'));
 
@@ -134,6 +231,10 @@ class XProp {
       modelChain: chain,
       nodeCount: calc.nodeCount(displayAs, attrs),
       channelCount: calc.channelCount(displayAs, attrs),
+      portSpan: portSpan,
+      smartRemote: smartRemote,
+      smartRemoteType: smartRemoteType,
+      dmxChannel: dmxChannel,
     );
   }
 }

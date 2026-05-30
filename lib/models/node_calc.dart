@@ -17,6 +17,24 @@ String normalizeDisplayAs(String displayAs) {
   return d;
 }
 
+/// Number of consecutive controller ports a model occupies when wired
+/// one-string-per-port. Only Matrix and Tree models fan out across ports (one
+/// per physical string, from `NumStrings` or legacy `parm1`); every other type
+/// — Custom, Arches, Single Line, Star, Window Frame, Poly Line — stays on a
+/// single port regardless of its internal string/segment count.
+int portStringCount(String displayAs, Map<String, String> attrs) {
+  switch (normalizeDisplayAs(displayAs)) {
+    case 'Matrix':
+    case 'Tree':
+      final n = int.tryParse(attrs['NumStrings']?.trim() ?? '') ??
+          int.tryParse(attrs['parm1']?.trim() ?? '') ??
+          1;
+      return n < 1 ? 1 : n;
+    default:
+      return 1;
+  }
+}
+
 /// Channels driven per node, derived from the model's `StringType`.
 ///
 /// RGBW/4-channel nodes → 4, single colour → 1, otherwise RGB → 3.

@@ -6,19 +6,87 @@ import '../models/controller.dart';
 import '../models/prop.dart';
 import 'xlights_parser.dart';
 
-/// One controller plus the props wired to it, with props bucketed by port.
+/// Props wired to one smart receiver (a single A–F remote on a controller).
+class SmartReceiver {
+  SmartReceiver(this.remote);
+
+  /// 1 = A, 2 = B, … (matches [XProp.smartRemote]).
+  final int remote;
+
+  /// Port number → props on that port (chained props share a port).
+  final Map<int, List<XProp>> ports = {};
+
+  String get letter => String.fromCharCode(0x40 + remote);
+
+  Iterable<int> get sortedPorts => ports.keys.toList()..sort();
+}
+
+/// One controller plus the props wired to it. Non-smart-remote ports are split
+/// by [PortKind] (string / panel matrix / serial); smart-remote ports are
+/// grouped into [receivers] keyed by remote letter.
 class ControllerGroup {
   ControllerGroup(this.name);
 
   final String name;
 
-  /// Port number → props on that port (chained props share a port).
-  final Map<int, List<XProp>> ports = {};
+  /// Regular pixel string ports: port number → props (chained props share one).
+  final Map<int, List<XProp>> stringPorts = {};
+
+  /// LED/virtual panel-matrix ports.
+  final Map<int, List<XProp>> panelPorts = {};
+
+  /// Serial / DMX ports.
+  final Map<int, List<XProp>> serialPorts = {};
+
+  /// Smart receivers keyed by remote index (1 = A …).
+  final Map<int, SmartReceiver> receivers = {};
 
   /// Props that reference this controller but have no port assigned.
   final List<XProp> unported = [];
 
-  Iterable<int> get sortedPorts => ports.keys.toList()..sort();
+  bool get isEmpty =>
+      stringPorts.isEmpty &&
+      panelPorts.isEmpty &&
+      serialPorts.isEmpty &&
+      receivers.isEmpty &&
+      unported.isEmpty;
+
+  Iterable<SmartReceiver> get sortedReceivers =>
+      receivers.values.toList()..sort((a, b) => a.remote.compareTo(b.remote));
+
+  /// Lowest controller port used by any smart receiver on this controller, or
+  /// null when there are none. Smart receivers cascade on the same physical
+  /// ports, so all letters share one port range.
+  int? get _smartBankStart {
+    int? min;
+    for (final r in receivers.values) {
+      for (final p in r.ports.keys) {
+        if (min == null || p < min) min = p;
+      }
+    }
+    return min;
+  }
+
+  /// Smart receiver hardware type seen on this controller (e.g. `fpp_v2`), or
+  /// empty when unknown.
+  String get smartReceiverType => receivers.values
+      .expand((rc) => rc.ports.values)
+      .expand((l) => l)
+      .map((p) => p.smartRemoteType)
+      .firstWhere((t) => t.isNotEmpty, orElse: () => '');
+
+  /// Header label for a smart receiver, e.g. `Smart Receiver 25-28A (fpp_v2)`.
+  String smartReceiverLabel(SmartReceiver r) {
+    final start = _smartBankStart;
+    if (start == null) return 'Smart Receiver ${r.letter}';
+    final type = smartReceiverType;
+    final end = start + smartReceiverPortCount(type) - 1;
+    final suffix = type.isEmpty ? '' : ' ($type)';
+    return 'Smart Receiver $start-$end${r.letter}$suffix';
+  }
+
+  static Iterable<int> sortedKeys(Map<int, List<XProp>> m) =>
+      m.keys.toList()..sort();
 }
 
 /// Central state holder for the loaded xLights files.
@@ -101,24 +169,39 @@ class LayoutStore extends ChangeNotifier {
         continue;
       }
       final group = groups.putIfAbsent(controller, () => ControllerGroup(controller));
-      if (p.port > 0) {
-        group.ports.putIfAbsent(p.port, () => []).add(p);
-      } else {
+      if (p.port <= 0) {
         group.unported.add(p);
+      } else if (p.smartRemote > 0) {
+        group.receivers
+            .putIfAbsent(p.smartRemote, () => SmartReceiver(p.smartRemote))
+            .ports
+            .putIfAbsent(p.port, () => [])
+            .add(p);
+      } else {
+        final bucket = switch (p.portKind) {
+          PortKind.serial => group.serialPorts,
+          PortKind.panelMatrix => group.panelPorts,
+          PortKind.string || PortKind.generic => group.stringPorts,
+        };
+        bucket.putIfAbsent(p.port, () => []).add(p);
       }
     }
 
     // Sort props within each port by start channel (chain order).
     for (final g in groups.values) {
-      for (final list in g.ports.values) {
+      final lists = [
+        ...g.stringPorts.values,
+        ...g.panelPorts.values,
+        ...g.serialPorts.values,
+        for (final r in g.receivers.values) ...r.ports.values,
+      ];
+      for (final list in lists) {
         list.sort((a, b) => a.startChannel.compareTo(b.startChannel));
       }
     }
 
     // Drop controllers that ended up with no props at all.
-    final nonEmpty = groups.values
-        .where((g) => g.ports.isNotEmpty || g.unported.isNotEmpty)
-        .toList();
+    final nonEmpty = groups.values.where((g) => !g.isEmpty).toList();
 
     return (groups: nonEmpty, notAssigned: notAssigned);
   }

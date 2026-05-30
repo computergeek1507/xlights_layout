@@ -97,9 +97,9 @@ void main() {
       ..loadRgbEffects(rgbXml.codeUnits, 'xlights_rgbeffects.xml');
     final data = store.grouped;
 
-    test('Arch1 lands under Tree -> Port 17', () {
+    test('Arch1 lands under Tree -> String Port 17', () {
       final tree = data.groups.firstWhere((g) => g.name == 'Tree');
-      expect(tree.ports[17]!.any((p) => p.name == 'Arch1'), isTrue);
+      expect(tree.stringPorts[17]!.any((p) => p.name == 'Arch1'), isTrue);
     });
 
     test('unassigned props captured separately', () {
@@ -108,12 +108,89 @@ void main() {
 
     test('props on a port are sorted by start channel', () {
       for (final g in data.groups) {
-        for (final list in g.ports.values) {
+        final lists = [
+          ...g.stringPorts.values,
+          ...g.panelPorts.values,
+          ...g.serialPorts.values,
+          for (final r in g.receivers.values) ...r.ports.values,
+        ];
+        for (final list in lists) {
           for (var i = 1; i < list.length; i++) {
             expect(list[i].startChannel >= list[i - 1].startChannel, isTrue);
           }
         }
       }
+    });
+  });
+
+  group('smart receivers, multi-port & serial', () {
+    final smartXml =
+        File('test/fixtures/xlights_rgbeffects_smartremote.xml').readAsStringSync();
+    final props = XLightsParser.parseModels(smartXml);
+    XProp byName(String n) => props.firstWhere((p) => p.name == n);
+
+    test('SmartRemote int maps to A/B letters', () {
+      expect(byName('Train_Engine').smartRemote, 1);
+      expect(byName('Train_Engine').smartRemoteLetter, 'A');
+      expect(byName('Train_Smoke').smartRemoteLetter, 'B');
+      expect(byName('Train_Matrix').smartRemoteLetter, 'B');
+      expect(byName('WalkwayLeft').smartRemote, 0);
+      expect(byName('WalkwayLeft').smartRemoteLetter, '');
+    });
+
+    test('NumStrings drives port span; Custom & panel stay on one port', () {
+      expect(byName('Train_Matrix').portSpan, 2); // ports 26-27
+      expect(byName('Train_Matrix').portRange, '26-27');
+      expect(byName('Train_Engine').portSpan, 1); // CustomStrings ignored
+      expect(byName('TuneTo').portSpan, 1); // panel matrix, NumStrings=16 ignored
+    });
+
+    test('serial DMX channel is parsed', () {
+      expect(byName('MovingHead').portKind, PortKind.serial);
+      expect(byName('MovingHead').dmxChannel, 7);
+    });
+
+    test('condensed port labels match xLights', () {
+      expect(condensedPortLabel(byName('WalkwayLeft')), 'String Port #14');
+      expect(condensedPortLabel(byName('Train_Engine')), 'Port #25A');
+      expect(condensedPortLabel(byName('Train_Smoke')), 'Port #25B');
+      expect(condensedPortLabel(byName('Train_Matrix')), 'Port #26-27B');
+      expect(condensedPortLabel(byName('MovingHead')), 'Serial Port #2 Channel 7');
+      expect(condensedPortLabel(byName('TuneTo')), 'LED Panel Matrix Port #1');
+    });
+
+    test('legacy parm1 drives port span on a smart-remote matrix', () {
+      // Pre-2026.04 files use Horiz Matrix + parm1 (string count) instead of
+      // NumStrings — the multi-port span must still resolve to 26-27.
+      const legacy = '<xrgb><models>'
+          '<model name="Train_Matrix" DisplayAs="Horiz Matrix" parm1="2" '
+          'parm2="128" Controller="House Left" StartChannel="!House Left:1">'
+          '<ControllerConnection SmartRemote="2" SmartRemoteType="fpp_v2" '
+          'Port="26" Protocol="ws2811"/></model></models></xrgb>';
+      final m = XLightsParser.parseModels(legacy).single;
+      expect(m.portSpan, 2);
+      expect(condensedPortLabel(m), 'Port #26-27B');
+    });
+
+    test('grouping splits ports by kind and builds receiver banks', () {
+      final store = LayoutStore()
+        ..loadRgbEffects(smartXml.codeUnits, 'smart.xml');
+      final hl = store.grouped.groups.firstWhere((g) => g.name == 'House Left');
+
+      expect(hl.stringPorts.keys, contains(14));
+      expect(hl.serialPorts.keys, contains(2));
+      expect(hl.panelPorts, isEmpty); // TuneTo is its own controller
+      expect(hl.receivers.keys, containsAll(<int>[1, 2]));
+
+      // Receiver A spans the 4-port fpp_v2 bank starting at the lowest used port.
+      final recA = hl.receivers[1]!;
+      expect(hl.smartReceiverLabel(recA), 'Smart Receiver 25-28A (fpp_v2)');
+      final recB = hl.receivers[2]!;
+      expect(hl.smartReceiverLabel(recB), 'Smart Receiver 25-28B (fpp_v2)');
+      expect(recB.ports.keys, containsAll(<int>[25, 26]));
+
+      final tuneTo = store.grouped.groups.firstWhere((g) => g.name == 'TuneTo');
+      expect(tuneTo.panelPorts.keys, contains(1));
     });
   });
 

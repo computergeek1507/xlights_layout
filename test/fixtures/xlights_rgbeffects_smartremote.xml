@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xrgb>
+  <models>
+    <!-- Regular pixel string port. -->
+    <model name="WalkwayLeft" DisplayAs="Single Line" Controller="House Left"
+           NumStrings="1" NodesPerString="50" StringType="RGB Nodes"
+           StartChannel="!House Left:1">
+      <ControllerConnection Port="14" Protocol="ws2811" Brightness="50"/>
+    </model>
+
+    <!-- Smart receiver A, port 25: single Custom string (CustomStrings does not
+         expand ports, so it stays on one port -> "Port #25A"). -->
+    <model name="Train_Engine" DisplayAs="Custom" Controller="House Left"
+           CustomStrings="5" PixelCount="250" StringType="RGB Nodes"
+           StartChannel="!House Left:9427">
+      <ControllerConnection Port="25" Protocol="ws2811" SmartRemote="1"
+                            SRMaxCascade="2" SRCascadeOnPort="FALSE"
+                            SmartRemoteType="fpp_v2"/>
+    </model>
+
+    <!-- Smart receiver B, port 25. -->
+    <model name="Train_Smoke" DisplayAs="Custom" Controller="House Left"
+           PixelCount="100" StringType="RGB Nodes"
+           StartChannel="!House Left:12877">
+      <ControllerConnection Port="25" Protocol="ws2811" SmartRemote="2"
+                            SRMaxCascade="1" SRCascadeOnPort="FALSE"
+                            SmartRemoteType="fpp_v2"/>
+    </model>
+
+    <!-- Smart receiver B, matrix wired one-string-per-port: NumStrings=2 spans
+         ports 26-27 -> "Port #26-27B". -->
+    <model name="Train_Matrix" DisplayAs="Matrix" Controller="House Left"
+           NumStrings="2" NodesPerString="128" StringType="RGB Nodes"
+           StartChannel="!House Left:13177">
+      <ControllerConnection Port="26" Protocol="ws2811" SmartRemote="2"
+                            SRMaxCascade="1" SRCascadeOnPort="FALSE"
+                            SmartRemoteType="fpp_v2"/>
+    </model>
+
+    <!-- Serial / DMX prop with an in-universe channel. -->
+    <model name="MovingHead" DisplayAs="DmxMovingHeadAdv" Controller="House Left"
+           PixelCount="1" StringType="RGB Nodes" StartChannel="!House Left:5000">
+      <ControllerConnection Port="2" Protocol="dmx" channel="7" Speed="25000"/>
+    </model>
+
+    <!-- LED Panel Matrix: own controller, single output regardless of strings. -->
+    <model name="TuneTo" DisplayAs="Matrix" Controller="TuneTo"
+           NumStrings="16" NodesPerString="64" StringType="RGB Nodes"
+           StartChannel="!TuneTo:1">
+      <ControllerConnection Port="1" Protocol="LED Panel Matrix"/>
+    </model>
+  </models>
+</xrgb>
