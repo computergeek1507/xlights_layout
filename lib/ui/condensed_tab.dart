@@ -66,13 +66,14 @@ class CondensedTab extends StatelessWidget {
     return items;
   }
 
-  /// Adds one row per prop on a port; only the first row carries the port
-  /// label (daisy-chained props below share it and show a blank label).
+  /// Adds one row per prop on a port. The port number is shown once (on the
+  /// first row); daisy-chained pixel props below share it, while DMX/serial
+  /// models each show their own channel.
   void _addPortProps(List<_Item> items, List<XProp> props) {
     for (var i = 0; i < props.length; i++) {
       items.add(_PropItem(
         shape: props[i].shape,
-        port: i == 0 ? condensedPortLabel(props[i]) : '',
+        port: condensedPortLabel(props[i], firstOnPort: i == 0),
         name: props[i].name,
       ));
     }

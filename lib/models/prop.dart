@@ -52,18 +52,28 @@ int smartReceiverPortCount(String type) =>
 /// Port label for a prop in the Condensed report, e.g. `String Port #14`,
 /// `Port #26-27B` (smart receiver), `LED Panel Matrix Port #1`, or
 /// `Serial Port #2 Channel 7`.
-String condensedPortLabel(XProp p) {
-  if (p.smartRemote > 0) return 'Port #${p.portRange}${p.smartRemoteLetter}';
+///
+/// [firstOnPort] is false for the 2nd+ prop sharing a port. The port number is
+/// only emitted once per port, but a DMX/serial `Channel` is tied to each model
+/// (several models share a serial bus at different channels), so it is shown on
+/// every row.
+String condensedPortLabel(XProp p, {bool firstOnPort = true}) {
+  if (p.smartRemote > 0) {
+    return firstOnPort ? 'Port #${p.portRange}${p.smartRemoteLetter}' : '';
+  }
   switch (p.portKind) {
     case PortKind.serial:
-      final ch = p.dmxChannel > 0 ? ' Channel ${p.dmxChannel}' : '';
-      return 'Serial Port #${p.port}$ch';
+      final parts = [
+        if (firstOnPort) 'Serial Port #${p.port}',
+        if (p.dmxChannel > 0) 'Channel ${p.dmxChannel}',
+      ];
+      return parts.join(' ');
     case PortKind.panelMatrix:
-      return '${p.protocol} Port #${p.port}';
+      return firstOnPort ? '${p.protocol} Port #${p.port}' : '';
     case PortKind.generic:
-      return 'generic Port #${p.port}';
+      return firstOnPort ? 'generic Port #${p.port}' : '';
     case PortKind.string:
-      return 'String Port #${p.portRange}';
+      return firstOnPort ? 'String Port #${p.portRange}' : '';
   }
 }
 

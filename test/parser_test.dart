@@ -147,7 +147,8 @@ void main() {
 
     test('serial DMX channel is parsed', () {
       expect(byName('MovingHead').portKind, PortKind.serial);
-      expect(byName('MovingHead').dmxChannel, 7);
+      expect(byName('MovingHead').dmxChannel, 1);
+      expect(byName('MovingHead2').dmxChannel, 7);
     });
 
     test('condensed port labels match xLights', () {
@@ -155,8 +156,19 @@ void main() {
       expect(condensedPortLabel(byName('Train_Engine')), 'Port #25A');
       expect(condensedPortLabel(byName('Train_Smoke')), 'Port #25B');
       expect(condensedPortLabel(byName('Train_Matrix')), 'Port #26-27B');
-      expect(condensedPortLabel(byName('MovingHead')), 'Serial Port #2 Channel 7');
+      expect(condensedPortLabel(byName('MovingHead')), 'Serial Port #2 Channel 1');
       expect(condensedPortLabel(byName('TuneTo')), 'LED Panel Matrix Port #1');
+    });
+
+    test('DMX channel is tied to each model, not the shared serial port', () {
+      // First model on the port shows "Serial Port #2"; the second shares the
+      // port but shows only its own channel — neither hides its channel.
+      final mh1 = byName('MovingHead'); // channel 1, lower start channel
+      final mh2 = byName('MovingHead2'); // channel 7
+      expect(condensedPortLabel(mh1, firstOnPort: true), 'Serial Port #2 Channel 1');
+      expect(condensedPortLabel(mh2, firstOnPort: false), 'Channel 7');
+      // A non-serial 2nd-on-port prop stays blank (pixel daisy-chain).
+      expect(condensedPortLabel(byName('Train_Engine'), firstOnPort: false), '');
     });
 
     test('legacy parm1 drives port span on a smart-remote matrix', () {

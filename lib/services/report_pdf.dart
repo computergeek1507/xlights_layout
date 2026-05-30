@@ -114,7 +114,10 @@ class ReportPdf {
 
     void addPortProps(List<XProp> props) {
       for (var i = 0; i < props.length; i++) {
-        rows.add(_Row.prop(i == 0 ? condensedPortLabel(props[i]) : '', props[i].name));
+        rows.add(_Row.prop(
+          condensedPortLabel(props[i], firstOnPort: i == 0),
+          props[i].name,
+        ));
       }
     }
 

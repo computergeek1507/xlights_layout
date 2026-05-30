@@ -37,9 +37,14 @@
                             SmartRemoteType="fpp_v2"/>
     </model>
 
-    <!-- Serial / DMX prop with an in-universe channel. -->
+    <!-- Two DMX fixtures sharing serial port 2 at different channels: the
+         channel belongs to each model, not the shared port. -->
     <model name="MovingHead" DisplayAs="DmxMovingHeadAdv" Controller="House Left"
            PixelCount="1" StringType="RGB Nodes" StartChannel="!House Left:5000">
+      <ControllerConnection Port="2" Protocol="dmx" channel="1" Speed="25000"/>
+    </model>
+    <model name="MovingHead2" DisplayAs="DmxMovingHeadAdv" Controller="House Left"
+           PixelCount="1" StringType="RGB Nodes" StartChannel="!House Left:5007">
       <ControllerConnection Port="2" Protocol="dmx" channel="7" Speed="25000"/>
     </model>
 
