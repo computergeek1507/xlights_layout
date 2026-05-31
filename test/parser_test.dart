@@ -254,6 +254,39 @@ void main() {
     });
   });
 
+  group('portKindFor', () {
+    test('all xLights serial protocols classify as serial', () {
+      for (final p in const [
+        'dmx', 'dmx512', 'dmx-open', 'opendmx', 'dmx-pro', 'lor', 'renard',
+        'genericserial', 'pixelnet', 'pixelnet-lynx', 'pixelnet-open',
+        'DMX', 'Renard', // case-insensitive
+      ]) {
+        expect(portKindFor(p), PortKind.serial, reason: p);
+      }
+    });
+
+    test('pixel, panel, and empty protocols are not serial', () {
+      expect(portKindFor('ws2811'), PortKind.string);
+      expect(portKindFor('LED Panel Matrix'), PortKind.panelMatrix);
+      expect(portKindFor('Virtual Matrix'), PortKind.panelMatrix);
+      expect(portKindFor(''), PortKind.generic);
+    });
+
+    test('pixel chip protocols default to a String port', () {
+      for (final p in const [
+        'sk6812', 'ucs512', 'ws2822', 'dmx512p', 'ucs512c4', 'sm16825',
+        'apa102', 'gece', 'tm1814', 'ws2801',
+      ]) {
+        expect(portKindFor(p), PortKind.string, reason: p);
+      }
+    });
+
+    test('bare dmx512 is serial, dmx512p pixel variant is a String port', () {
+      expect(portKindFor('dmx512'), PortKind.serial);
+      expect(portKindFor('dmx512p'), PortKind.string);
+    });
+  });
+
   group('channelsPerNode', () {
     test('RGB -> 3, RGBW -> 4, single -> 1', () {
       expect(channelsPerNode('RGB Nodes'), 3);

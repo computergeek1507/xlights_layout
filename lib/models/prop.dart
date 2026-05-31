@@ -21,17 +21,30 @@ enum PropShape {
 /// as their own kind of output.
 enum PortKind { string, serial, panelMatrix, generic }
 
+/// Serial / DMX output protocols, as xLights identifies them. These ports are
+/// numbered independently of pixel string ports.
+const _serialProtocols = <String>{
+  'dmx', 'dmx512',
+  'dmx-open', 'opendmx',
+  'dmx-pro',
+  'lor',
+  'renard',
+  'genericserial',
+  'pixelnet', 'pixelnet-lynx', 'pixelnet-open',
+};
+
 /// Classifies a `<ControllerConnection Protocol="…">` value into a [PortKind].
+///
+/// Serial protocols are matched exactly against [_serialProtocols]; panel
+/// matrices by their `matrix` keyword. Everything else — the long list of pixel
+/// chip protocols (ws2811, ucs512, ws2822, dmx512p, sk6812, …) — is a pixel
+/// String port by default, so new chip types need no maintenance here. Note
+/// xLights overloads bare `dmx512` as serial DMX (the pixel variant is
+/// `dmx512p`), so it is intentionally in the serial set.
 PortKind portKindFor(String protocol) {
-  final p = protocol.toLowerCase();
+  final p = protocol.toLowerCase().trim();
   if (p.isEmpty) return PortKind.generic;
-  if (p.contains('dmx') ||
-      p.contains('serial') ||
-      p.contains('renard') ||
-      p.contains('lor') ||
-      p.contains('pixelnet')) {
-    return PortKind.serial;
-  }
+  if (_serialProtocols.contains(p)) return PortKind.serial;
   // "LED Panel Matrix", "Virtual Matrix", … — the whole panel is one output.
   if (p.contains('matrix')) return PortKind.panelMatrix;
   return PortKind.string;
