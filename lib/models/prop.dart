@@ -14,6 +14,7 @@ enum PropShape {
   polyLine,
   custom,
   movingHead,
+  sphere,
   other,
 }
 
@@ -113,6 +114,8 @@ PropShape _shapeFor(String displayAs) {
       return PropShape.polyLine;
     case 'Custom':
       return PropShape.custom;
+    case 'Sphere':
+      return PropShape.sphere;
     default:
       return PropShape.other;
   }

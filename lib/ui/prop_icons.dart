@@ -80,7 +80,31 @@ class _ShapePainter extends CustomPainter {
       case PropShape.movingHead:
         _drawMovingHead(canvas, size, stroke, fill);
         break;
+      case PropShape.sphere:
+        _drawSphere(canvas, size, stroke);
+        break;
     }
+  }
+
+  /// A globe: an outer circle with one meridian and one equator drawn as
+  /// ellipses, reading as a 3D sphere rather than a flat disc.
+  void _drawSphere(Canvas canvas, Size size, Paint stroke) {
+    final w = size.width;
+    final h = size.height;
+    final center = Offset(w / 2, h / 2);
+    final r = (w - 2 * (w * 0.18)) / 2;
+
+    canvas.drawCircle(center, r, stroke);
+    // Meridian (vertical great circle, seen edge-on as a thin ellipse).
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: r * 0.9, height: r * 2),
+      stroke,
+    );
+    // Equator (horizontal great circle).
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: r * 2, height: r * 0.9),
+      stroke,
+    );
   }
 
   /// A moving-head fixture: a base, a stem up to the lens, and a beam cone.
