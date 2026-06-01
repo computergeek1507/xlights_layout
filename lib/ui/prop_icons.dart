@@ -77,7 +77,33 @@ class _ShapePainter extends CustomPainter {
       case PropShape.star:
         _drawStar(canvas, size, stroke);
         break;
+      case PropShape.movingHead:
+        _drawMovingHead(canvas, size, stroke, fill);
+        break;
     }
+  }
+
+  /// A moving-head fixture: a base, a stem up to the lens, and a beam cone.
+  void _drawMovingHead(Canvas canvas, Size size, Paint stroke, Paint fill) {
+    final w = size.width;
+    final h = size.height;
+    final pad = w * 0.18;
+    final head = Offset(w / 2, h * 0.52);
+
+    // Beam cone projecting up from the lens.
+    final beam = Path()
+      ..moveTo(head.dx, head.dy)
+      ..lineTo(w * 0.27, pad)
+      ..lineTo(w * 0.73, pad)
+      ..close();
+    canvas.drawPath(beam, stroke);
+
+    // Base plate and the stem/yoke holding the head.
+    canvas.drawLine(Offset(w * 0.3, h - pad), Offset(w * 0.7, h - pad), stroke);
+    canvas.drawLine(Offset(w / 2, h - pad), head, stroke);
+
+    // Lens, drawn last so it caps the beam apex.
+    canvas.drawCircle(head, w * 0.13, fill);
   }
 
   void _drawGrid(Canvas canvas, Size size, Paint fill,

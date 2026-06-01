@@ -151,6 +151,12 @@ void main() {
       expect(byName('MovingHead2').dmxChannel, 7);
     });
 
+    test('DMX fixture channel count comes from DmxChannelCount', () {
+      // A DMX moving head occupies DmxChannelCount channels, not PixelCount×3.
+      expect(byName('MovingHead').channelCount, 6);
+      expect(byName('MovingHead').nodeCount, 6);
+    });
+
     test('condensed port labels match xLights', () {
       expect(condensedPortLabel(byName('WalkwayLeft')), 'String Port #14');
       expect(condensedPortLabel(byName('Train_Engine')), 'Port #25A');

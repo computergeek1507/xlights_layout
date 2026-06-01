@@ -13,6 +13,7 @@ enum PropShape {
   line,
   polyLine,
   custom,
+  movingHead,
   other,
 }
 
@@ -91,6 +92,8 @@ String condensedPortLabel(XProp p, {bool firstOnPort = true}) {
 }
 
 PropShape _shapeFor(String displayAs) {
+  // DMX moving heads (DmxMovingHead, DmxMovingHeadAdv) get a fixture glyph.
+  if (displayAs.contains('MovingHead')) return PropShape.movingHead;
   switch (displayAs) {
     case 'Arches':
       return PropShape.arch;

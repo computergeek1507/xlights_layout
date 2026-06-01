@@ -17,6 +17,15 @@ String normalizeDisplayAs(String displayAs) {
   return d;
 }
 
+/// Whether a model is a DMX fixture (`DmxMovingHead`, `DmxMovingHeadAdv`,
+/// `DmxFloodlight`, `DmxServo`, `DmxSkull`, …). These don't have pixel nodes;
+/// they occupy a fixed block of DMX channels given by `DmxChannelCount`.
+bool isDmxModel(String displayAs) => displayAs.trim().startsWith('Dmx');
+
+/// DMX channel footprint from `DmxChannelCount`; 0 when absent.
+int _dmxChannelCount(Map<String, String> attrs) =>
+    int.tryParse(attrs['DmxChannelCount']?.trim() ?? '') ?? 0;
+
 /// Number of consecutive controller ports a model occupies when wired
 /// one-string-per-port. Only Matrix and Tree models fan out across ports (one
 /// per physical string, from `NumStrings` or legacy `parm1`); every other type
@@ -63,6 +72,14 @@ int nodeCount(String displayAs, Map<String, String> attrs) {
     return fallback;
   }
 
+  // DMX fixtures occupy DmxChannelCount channels; xLights treats each DMX slot
+  // as one node. Checked before PixelCount because DMX models carry a vestigial
+  // PixelCount="1" that does not reflect their channel footprint.
+  if (isDmxModel(displayAs)) {
+    final dmx = _dmxChannelCount(attrs);
+    if (dmx > 0) return dmx;
+  }
+
   // An explicit pixel count (some Custom/Bell-style models) always wins.
   final pixelCount = attrInt('PixelCount');
   if (pixelCount > 0) return pixelCount;
@@ -92,9 +109,15 @@ int nodeCount(String displayAs, Map<String, String> attrs) {
   }
 }
 
-/// Total channel count = nodes × channels-per-node.
-int channelCount(String displayAs, Map<String, String> attrs) =>
-    nodeCount(displayAs, attrs) * channelsPerNode(attrs['StringType']);
+/// Total channel count = nodes × channels-per-node, except DMX fixtures whose
+/// footprint is one channel per DMX slot (`DmxChannelCount` directly).
+int channelCount(String displayAs, Map<String, String> attrs) {
+  if (isDmxModel(displayAs)) {
+    final dmx = _dmxChannelCount(attrs);
+    if (dmx > 0) return dmx;
+  }
+  return nodeCount(displayAs, attrs) * channelsPerNode(attrs['StringType']);
+}
 
 /// Custom models store geometry in `CustomModelCompressed` as
 /// `"node,col,row;node,col,row;..."`. The node count is the highest node
