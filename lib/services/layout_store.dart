@@ -96,12 +96,23 @@ class LayoutStore extends ChangeNotifier {
   String? _rgbFileName;
   String? _networksFileName;
   String? _error;
+  bool _hideUnassigned = false;
 
   List<XControllerInfo> get controllers => _controllers;
   List<XProp> get props => _props;
   String? get rgbFileName => _rgbFileName;
   String? get networksFileName => _networksFileName;
   String? get error => _error;
+
+  /// Whether the Controller Wiring view (and its PDF export) hides the "not
+  /// assigned" section of generic/unwired models.
+  bool get hideUnassigned => _hideUnassigned;
+
+  set hideUnassigned(bool value) {
+    if (_hideUnassigned == value) return;
+    _hideUnassigned = value;
+    notifyListeners();
+  }
 
   /// True once the required rgbeffects file has been loaded.
   bool get hasData => _props.isNotEmpty;

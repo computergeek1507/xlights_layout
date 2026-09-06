@@ -88,15 +88,11 @@ class ReportPdf {
     final data = store.grouped;
     final widgets = <pw.Widget>[];
 
-    if (data.notAssigned.isNotEmpty) {
+    if (!store.hideUnassigned && data.notAssigned.isNotEmpty) {
       widgets.add(_groupHeading('not assigned', italic: true));
       widgets.add(_groupBox([
-        for (final p in data.notAssigned) _Row.prop('generic Port #0', p.name),
+        for (final p in data.notAssigned) _Row.prop('', p.name),
       ]));
-      widgets.add(pw.Text(
-        '* Port 0 means the prop was not assigned to a port in your layout',
-        style: const pw.TextStyle(fontSize: 8),
-      ));
       widgets.add(pw.SizedBox(height: 12));
     }
 

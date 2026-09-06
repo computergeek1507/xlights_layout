@@ -6,7 +6,8 @@ import 'prop_icons.dart';
 
 /// "Condensed" report: props grouped by controller, then split into String /
 /// Smart Receiver / LED Panel Matrix / Serial sections, each port labelled.
-/// Unassigned props are shown first under a "not assigned" header.
+/// Unassigned props are shown first under a "not assigned" header, unless
+/// hidden via the checkbox (also honored by the PDF export).
 class CondensedTab extends StatelessWidget {
   const CondensedTab({super.key, required this.store});
 
@@ -15,21 +16,38 @@ class CondensedTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final data = store.grouped;
-    return ListView(
-      padding: const EdgeInsets.all(12),
+    return Column(
       children: [
-        if (data.notAssigned.isNotEmpty)
-          _GroupCard(
-            title: 'not assigned',
-            italic: true,
-            footnote: '* Port 0 means the prop was not assigned to a port in your layout',
-            items: [
-              for (final p in data.notAssigned)
-                _PropItem(shape: p.shape, port: 'generic Port #0', name: p.name),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: Row(
+            children: [
+              Checkbox(
+                value: store.hideUnassigned,
+                onChanged: (value) => store.hideUnassigned = value ?? false,
+              ),
+              const Text('Hide unassigned models'),
             ],
           ),
-        for (final group in data.groups)
-          _GroupCard(title: group.name, items: _itemsFor(group)),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              if (!store.hideUnassigned && data.notAssigned.isNotEmpty)
+                _GroupCard(
+                  title: 'not assigned',
+                  italic: true,
+                  items: [
+                    for (final p in data.notAssigned)
+                      _PropItem(shape: p.shape, port: '', name: p.name),
+                  ],
+                ),
+              for (final group in data.groups)
+                _GroupCard(title: group.name, items: _itemsFor(group)),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -105,13 +123,11 @@ class _GroupCard extends StatelessWidget {
     required this.title,
     required this.items,
     this.italic = false,
-    this.footnote,
   });
 
   final String title;
   final List<_Item> items;
   final bool italic;
-  final String? footnote;
 
   @override
   Widget build(BuildContext context) {
@@ -144,14 +160,6 @@ class _GroupCard extends StatelessWidget {
                     const Divider(height: 1),
                   _ItemRow(items[i]),
                 ],
-                if (footnote != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(footnote!, style: theme.textTheme.bodySmall),
-                    ),
-                  ),
               ],
             ),
           ),
@@ -198,8 +206,10 @@ class _ItemRow extends StatelessWidget {
         children: [
           PropShapeIcon(p.shape, size: 20),
           const SizedBox(width: 10),
-          SizedBox(width: 170, child: Text(p.port)),
-          const SizedBox(width: 8),
+          if (p.port.isNotEmpty) ...[
+            SizedBox(width: 170, child: Text(p.port)),
+            const SizedBox(width: 8),
+          ],
           Expanded(child: Text(p.name)),
         ],
       ),
