@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/controller.dart';
 import '../models/prop.dart';
 import '../services/layout_store.dart';
+import 'model_preview_dialog.dart';
 import 'prop_icons.dart';
 
 /// "Detailed" report: a controllers summary table (when a networks file is
@@ -87,6 +88,7 @@ class _PropsTable extends StatelessWidget {
   Widget build(BuildContext context) {
     return _HScroll(
       child: DataTable(
+        showCheckboxColumn: false,
         headingRowHeight: 38,
         dataRowMinHeight: 34,
         dataRowMaxHeight: 40,
@@ -102,16 +104,19 @@ class _PropsTable extends StatelessWidget {
         ],
         rows: [
           for (final p in props)
-            DataRow(cells: [
-              DataCell(PropShapeIcon(p.shape)),
-              DataCell(Text(p.name)),
-              DataCell(Text(p.nodeCount > 0 ? '${p.nodeCount}' : '')),
-              DataCell(Text(p.channelCount > 0 ? '${p.channelCount}' : '')),
-              DataCell(Text(p.controllerName == 'No Controller' ? '' : p.controllerName)),
-              DataCell(Text(p.universe > 0 ? '${p.universe}' : '')),
-              DataCell(Text(p.startChannel > 0 ? '${p.startChannel}' : '')),
-              DataCell(Text(p.connectionLabel)),
-            ]),
+            DataRow(
+              onSelectChanged: (_) => showModelPreview(context, p),
+              cells: [
+                DataCell(PropShapeIcon(p.shape)),
+                DataCell(Text(p.name)),
+                DataCell(Text(p.nodeCount > 0 ? '${p.nodeCount}' : '')),
+                DataCell(Text(p.channelCount > 0 ? '${p.channelCount}' : '')),
+                DataCell(Text(p.controllerName == 'No Controller' ? '' : p.controllerName)),
+                DataCell(Text(p.universe > 0 ? '${p.universe}' : '')),
+                DataCell(Text(p.startChannel > 0 ? '${p.startChannel}' : '')),
+                DataCell(Text(p.connectionLabel)),
+              ],
+            ),
         ],
       ),
     );

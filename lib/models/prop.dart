@@ -138,6 +138,7 @@ class XProp {
     required this.smartRemote,
     required this.smartRemoteType,
     required this.dmxChannel,
+    required this.element,
   });
 
   final String name;
@@ -182,6 +183,11 @@ class XProp {
   /// Channel within a DMX/serial universe from `<ControllerConnection channel="…">`;
   /// 0 when not a serial/DMX connection.
   final int dmxChannel;
+
+  /// The raw `<model>` XML element, kept so a shape preview can be built
+  /// on demand from its geometry attributes (parm1/parm2/parm3, CustomModel
+  /// grid data, ...) without re-parsing the whole file.
+  final XmlElement element;
 
   PropShape get shape => _shapeFor(displayAs);
 
@@ -264,6 +270,7 @@ class XProp {
       smartRemote: smartRemote,
       smartRemoteType: smartRemoteType,
       dmxChannel: dmxChannel,
+      element: e,
     );
   }
 }
