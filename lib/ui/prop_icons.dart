@@ -26,6 +26,22 @@ class PropShapeIcon extends StatelessWidget {
   }
 }
 
+/// Paints [shape]'s icon glyph (the same look as [PropShapeIcon]'s black
+/// box) directly onto [canvas] within [rect], for contexts that need a raw
+/// canvas instead of a widget — e.g. the Layout Preview's PDF export, which
+/// rasterizes the whole map in one [PictureRecorder] rather than mounting a
+/// widget tree.
+void paintPropShapeIcon(Canvas canvas, Rect rect, PropShape shape) {
+  canvas.save();
+  canvas.translate(rect.left, rect.top);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(Offset.zero & rect.size, const Radius.circular(2)),
+    Paint()..color = Colors.black,
+  );
+  _ShapePainter(shape).paint(canvas, rect.size);
+  canvas.restore();
+}
+
 class _ShapePainter extends CustomPainter {
   _ShapePainter(this.shape);
 
@@ -83,7 +99,30 @@ class _ShapePainter extends CustomPainter {
       case PropShape.sphere:
         _drawSphere(canvas, size, stroke);
         break;
+      case PropShape.cube:
+        _drawCube(canvas, size, stroke);
+        break;
     }
+  }
+
+  /// A wireframe cube: two offset squares (front/back faces) joined by
+  /// diagonal edges, the standard isometric-box glyph.
+  void _drawCube(Canvas canvas, Size size, Paint stroke) {
+    final w = size.width;
+    final h = size.height;
+    final pad = w * 0.2;
+    final depth = w * 0.22;
+
+    final frontRect = Rect.fromLTRB(pad, pad + depth, w - pad - depth, h - pad);
+    canvas.drawRect(frontRect, stroke);
+
+    final backRect = Rect.fromLTRB(pad + depth, pad, w - pad, h - pad - depth);
+    canvas.drawRect(backRect, stroke);
+
+    canvas.drawLine(backRect.topLeft, frontRect.topLeft, stroke);
+    canvas.drawLine(backRect.topRight, frontRect.topRight, stroke);
+    canvas.drawLine(backRect.bottomLeft, frontRect.bottomLeft, stroke);
+    canvas.drawLine(backRect.bottomRight, frontRect.bottomRight, stroke);
   }
 
   /// A globe: an outer circle with one meridian and one equator drawn as

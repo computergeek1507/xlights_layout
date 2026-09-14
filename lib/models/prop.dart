@@ -15,6 +15,7 @@ enum PropShape {
   custom,
   movingHead,
   sphere,
+  cube,
   other,
 }
 
@@ -116,6 +117,8 @@ PropShape _shapeFor(String displayAs) {
       return PropShape.custom;
     case 'Sphere':
       return PropShape.sphere;
+    case 'Cube':
+      return PropShape.cube;
     default:
       return PropShape.other;
   }
@@ -192,6 +195,16 @@ class XProp {
   PropShape get shape => _shapeFor(displayAs);
 
   PortKind get portKind => portKindFor(protocol);
+
+  /// Position within its preview's 2D layout canvas (xLights world units,
+  /// Y-up), read lazily from [element] since only the Layout Preview tab
+  /// needs it.
+  double get worldPosX => double.tryParse(element.getAttribute('WorldPosX') ?? '') ?? 0;
+  double get worldPosY => double.tryParse(element.getAttribute('WorldPosY') ?? '') ?? 0;
+
+  /// Which named preview/layout this model is placed in (e.g. "Default",
+  /// "Yard"). Models in different groups share no common coordinate space.
+  String get layoutGroup => element.getAttribute('LayoutGroup')?.trim() ?? '';
 
   /// Last controller port this model occupies (`port` when [portSpan] is 1).
   int get endPort => port + portSpan - 1;

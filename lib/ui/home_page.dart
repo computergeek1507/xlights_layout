@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
 import '../services/layout_store.dart';
+import '../services/preview_pdf.dart';
 import '../services/report_pdf.dart';
 import 'condensed_tab.dart';
 import 'detailed_tab.dart';
+import 'layout_preview_tab.dart';
 
-/// Top-level page: a two-tab report (Detailed | Condensed) with load/print/
-/// start-over actions, mirroring the original web tool's controls.
+/// Top-level page: a three-tab report (Layout | Controller Wiring | Preview)
+/// with load/print/start-over actions, mirroring the original web tool's
+/// controls.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.store});
 
@@ -22,6 +25,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   late final TabController _tabs;
+  final _previewKey = GlobalKey<LayoutPreviewTabState>();
   bool _busy = false;
 
   LayoutStore get store => widget.store;
@@ -29,7 +33,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 2, vsync: this);
+    _tabs = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -82,6 +86,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     }
     setState(() => _busy = true);
     try {
+      if (_tabs.index == 2) {
+        final group = _previewKey.currentState?.selectedGroup;
+        await Printing.layoutPdf(
+          name: 'xLights Layout Preview',
+          onLayout: (format) => PreviewPdf.build(format, store, group: group),
+        );
+        return;
+      }
       final detailed = _tabs.index == 0;
       await Printing.layoutPdf(
         name: detailed ? 'xLights Layout' : 'xLights Controller Wiring',
@@ -129,6 +141,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     tabs: const [
                       Tab(text: 'Layout'),
                       Tab(text: 'Controller Wiring'),
+                      Tab(text: 'Preview'),
                     ],
                   )
                 : null,
@@ -139,6 +152,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   children: [
                     DetailedTab(store: store),
                     CondensedTab(store: store),
+                    LayoutPreviewTab(key: _previewKey, store: store),
                   ],
                 )
               : _EmptyState(onLoad: _loadFiles),

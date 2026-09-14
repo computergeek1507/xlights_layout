@@ -64,23 +64,45 @@ WiredModel buildTree(XmlElement root) {
         ? radians / (bufferWi - 1)
         : radians / bufferWi;
 
-    for (final p in buffer) {
-      final t = bufferHt > 1 ? p.row / (bufferHt - 1) : 0.0;
-      final angle = startAngle + p.col * angleIncr + spiralRotations * 2 * math.pi * t;
-      final xBottom = radius * math.sin(angle);
-      final xTop = topRadius * math.sin(angle);
-      final x = xBottom + (xTop - xBottom) * t;
-      // t=0 is the (wide) physical bottom, t=1 the (narrow) top — xLights'
-      // own coordinate space is y-up, but our canvas draws y-down, so this
-      // must be negated or the wide base renders at the top of the screen.
-      final y = renderHt / 2 - renderHt * t;
-      nodes.add(WiredNode(
-        node: nodes.length + 1,
-        x: x,
-        y: y,
-        strand: 'Strand ${p.strandIndex + 1}',
-        strandIndex: p.strandIndex,
-      ));
+    if (bufferHt <= 1) {
+      // No height tiers to build a cone silhouette from — the general
+      // formula below would collapse every point onto one flat horizontal
+      // line (constant y, only x varying by angle) since t is always 0.
+      // Real xLights instead renders this as a flat disc/halo (seen in real
+      // files as small round "Glow" accents), so trace an actual ring
+      // instead — at the bottom-tier radius the general formula already
+      // uses, so switching between 1-row and multi-row trees doesn't jump
+      // to a different local-unit scale for the same ScaleX/ScaleY.
+      for (final p in buffer) {
+        final angle = startAngle + p.col * angleIncr;
+        nodes.add(WiredNode(
+          node: nodes.length + 1,
+          x: radius * math.sin(angle),
+          y: -radius * math.cos(angle),
+          strand: 'Strand ${p.strandIndex + 1}',
+          strandIndex: p.strandIndex,
+        ));
+      }
+    } else {
+      for (final p in buffer) {
+        final t = p.row / (bufferHt - 1);
+        final angle = startAngle + p.col * angleIncr + spiralRotations * 2 * math.pi * t;
+        final xBottom = radius * math.sin(angle);
+        final xTop = topRadius * math.sin(angle);
+        final x = xBottom + (xTop - xBottom) * t;
+        // t=0 is the (wide) physical bottom, t=1 the (narrow) top —
+        // xLights' own coordinate space is y-up, but our canvas draws
+        // y-down, so this must be negated or the wide base renders at the
+        // top of the screen.
+        final y = renderHt / 2 - renderHt * t;
+        nodes.add(WiredNode(
+          node: nodes.length + 1,
+          x: x,
+          y: y,
+          strand: 'Strand ${p.strandIndex + 1}',
+          strandIndex: p.strandIndex,
+        ));
+      }
     }
   } else {
     // Flat (1) / Ribbon (2) — Ribbon treated as Flat with a wider base scale.

@@ -3,12 +3,16 @@ import 'package:xml/xml.dart';
 import '../models/wired_model.dart';
 import 'geometry/arches_geometry.dart';
 import 'geometry/circle_geometry.dart';
+import 'geometry/cube_geometry.dart';
 import 'geometry/custom_grid.dart';
 import 'geometry/matrix_geometry.dart';
+import 'geometry/poly_line_geometry.dart';
 import 'geometry/single_line_geometry.dart';
+import 'geometry/sphere_geometry.dart';
 import 'geometry/spinner_geometry.dart';
 import 'geometry/star_geometry.dart';
 import 'geometry/tree_geometry.dart';
+import 'geometry/window_frame_geometry.dart';
 
 typedef _Builder = WiredModel Function(XmlElement);
 
@@ -21,6 +25,10 @@ final Map<String, _Builder> _nativeGeometries = {
   'circle': buildCircle,
   'star': buildStar,
   'spinner': buildSpinner,
+  'window frame': buildWindowFrame,
+  'poly line': buildPolyLine,
+  'sphere': buildSphere,
+  'cube': buildCube,
 };
 
 /// Builds a [WiredModel] shape preview from a `<model>` element parsed out of
