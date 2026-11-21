@@ -9,6 +9,7 @@ import '../services/preview_pdf.dart';
 import '../services/report_pdf.dart';
 import 'condensed_tab.dart';
 import 'detailed_tab.dart';
+import 'github_picker_dialog.dart';
 import 'layout_preview_tab.dart';
 
 /// Top-level page: a three-tab report (Layout | Controller Wiring | Preview)
@@ -57,16 +58,33 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     for (final file in result.files) {
       final bytes = file.bytes;
       if (bytes == null) continue;
-      final head = _peek(bytes);
-      if (head.contains('<Networks') || file.name.contains('networks')) {
-        store.loadNetworks(bytes, file.name);
-      } else if (head.contains('<xrgb') || file.name.contains('rgbeffects')) {
-        store.loadRgbEffects(bytes, file.name);
-      }
+      _routeFile(bytes, file.name);
     }
 
     if (mounted && store.error != null) {
       _toast(store.error!);
+    }
+  }
+
+  /// Lets the user browse a private GitHub repo (via a personal access
+  /// token) and pick a file, then routes it the same way as a local file.
+  Future<void> _loadFromGitHub() async {
+    final result = await showGitHubPickerDialog(context);
+    if (result == null) return;
+    _routeFile(result.bytes, result.name);
+    if (mounted && store.error != null) {
+      _toast(store.error!);
+    }
+  }
+
+  /// Inspects a loaded file's root element (or name, as a fallback) to route
+  /// it to the right loader, regardless of where it came from.
+  void _routeFile(List<int> bytes, String name) {
+    final head = _peek(bytes);
+    if (head.contains('<Networks') || name.contains('networks')) {
+      store.loadNetworks(bytes, name);
+    } else if (head.contains('<xrgb') || name.contains('rgbeffects')) {
+      store.loadRgbEffects(bytes, name);
     }
   }
 
@@ -118,10 +136,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           appBar: AppBar(
             title: const Text('xLights Layout Viewer'),
             actions: [
-              TextButton.icon(
-                onPressed: _busy ? null : _loadFiles,
-                icon: const Icon(Icons.folder_open),
-                label: const Text('Load files'),
+              _LoadMenuButton(
+                enabled: !_busy,
+                onLoadLocal: _loadFiles,
+                onLoadGitHub: _loadFromGitHub,
               ),
               IconButton(
                 tooltip: 'Print / export PDF',
@@ -155,7 +173,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     LayoutPreviewTab(key: _previewKey, store: store),
                   ],
                 )
-              : _EmptyState(onLoad: _loadFiles),
+              : _EmptyState(onLoadLocal: _loadFiles, onLoadGitHub: _loadFromGitHub),
           bottomNavigationBar: const _Footer(),
         );
       },
@@ -190,10 +208,52 @@ class _Footer extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onLoad});
+/// "Load files" action with a dropdown for choosing the source (local disk
+/// or a private GitHub repo).
+class _LoadMenuButton extends StatelessWidget {
+  const _LoadMenuButton({
+    required this.enabled,
+    required this.onLoadLocal,
+    required this.onLoadGitHub,
+  });
 
-  final VoidCallback onLoad;
+  final bool enabled;
+  final VoidCallback onLoadLocal;
+  final VoidCallback onLoadGitHub;
+
+  @override
+  Widget build(BuildContext context) {
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return TextButton.icon(
+          onPressed: enabled
+              ? () => controller.isOpen ? controller.close() : controller.open()
+              : null,
+          icon: const Icon(Icons.folder_open),
+          label: const Text('Load files'),
+        );
+      },
+      menuChildren: [
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.computer_outlined),
+          onPressed: onLoadLocal,
+          child: const Text('From this computer'),
+        ),
+        MenuItemButton(
+          leadingIcon: const Icon(Icons.code),
+          onPressed: onLoadGitHub,
+          child: const Text('From private GitHub repo'),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onLoadLocal, required this.onLoadGitHub});
+
+  final VoidCallback onLoadLocal;
+  final VoidCallback onLoadGitHub;
 
   @override
   Widget build(BuildContext context) {
@@ -216,9 +276,15 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: onLoad,
+              onPressed: onLoadLocal,
               icon: const Icon(Icons.folder_open),
-              label: const Text('Load files'),
+              label: const Text('Load files from this computer'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: onLoadGitHub,
+              icon: const Icon(Icons.code),
+              label: const Text('Load from private GitHub repo'),
             ),
           ],
         ),
