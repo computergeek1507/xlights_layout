@@ -35,7 +35,11 @@ jobs:
       - name: Build web
         # base-href must match the repository name so assets resolve under
         # https://<user>.github.io/xlights_layout/
-        run: flutter build web --release --base-href /xlights_layout/
+        # GOOGLE_CLIENT_ID is a repository *variable* (OAuth client IDs are
+        # public); leave it unset to build without Google Drive support.
+        run: >-
+          flutter build web --release --base-href /xlights_layout/
+          --dart-define=GOOGLE_CLIENT_ID=${{ vars.GOOGLE_CLIENT_ID }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

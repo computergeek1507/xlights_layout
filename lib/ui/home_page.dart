@@ -6,10 +6,15 @@ import 'package:printing/printing.dart';
 
 import '../services/layout_store.dart';
 import '../services/preview_pdf.dart';
+import '../services/remote/remote_source.dart';
 import '../services/report_pdf.dart';
 import 'condensed_tab.dart';
 import 'detailed_tab.dart';
 import 'layout_preview_tab.dart';
+import 'remote_load_dialogs.dart';
+
+/// Where to load show files from.
+enum LoadSource { device, github, googleDrive }
 
 /// Top-level page: a three-tab report (Layout | Controller Wiring | Preview)
 /// with load/print/start-over actions, mirroring the original web tool's
@@ -42,9 +47,20 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
-  /// Lets the user pick one or both xLights XML files and routes each to the
-  /// right loader by inspecting its root element.
-  Future<void> _loadFiles() async {
+  /// Loads show files from [source] and routes each to the right loader.
+  Future<void> _load(LoadSource source) async {
+    final Future<List<RemoteFile>?> pending = switch (source) {
+      LoadSource.device => _pickLocalFiles(),
+      LoadSource.github => showGitHubLoadDialog(context),
+      LoadSource.googleDrive => showDriveLoadDialog(context),
+    };
+    final files = await pending;
+    if (files == null || files.isEmpty) return;
+    _ingest(files);
+  }
+
+  /// Lets the user pick one or both xLights XML files from this device.
+  Future<List<RemoteFile>?> _pickLocalFiles() async {
     final result = await FilePicker.pickFiles(
       allowMultiple: true,
       withData: true,
@@ -52,21 +68,33 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       allowedExtensions: const ['xml'],
       dialogTitle: 'Select xlights_rgbeffects.xml (and optionally xlights_networks.xml)',
     );
-    if (result == null) return;
+    if (result == null) return null;
+    return [
+      for (final file in result.files)
+        if (file.bytes != null) RemoteFile(file.name, file.bytes!),
+    ];
+  }
 
-    for (final file in result.files) {
-      final bytes = file.bytes;
-      if (bytes == null) continue;
-      final head = _peek(bytes);
-      if (head.contains('<Networks') || file.name.contains('networks')) {
-        store.loadNetworks(bytes, file.name);
-      } else if (head.contains('<xrgb') || file.name.contains('rgbeffects')) {
-        store.loadRgbEffects(bytes, file.name);
+  /// Routes each file to the right loader by inspecting its root element.
+  void _ingest(List<RemoteFile> files) {
+    var loadedAny = false;
+    for (final file in files) {
+      final head = _peek(file.bytes);
+      final name = file.name.toLowerCase();
+      if (head.contains('<Networks') || name.contains('networks')) {
+        store.loadNetworks(file.bytes, file.name);
+        loadedAny = true;
+      } else if (head.contains('<xrgb') || name.contains('rgbeffects')) {
+        store.loadRgbEffects(file.bytes, file.name);
+        loadedAny = true;
       }
     }
 
-    if (mounted && store.error != null) {
+    if (!mounted) return;
+    if (store.error != null) {
       _toast(store.error!);
+    } else if (!loadedAny) {
+      _toast('None of those files look like xLights show files.');
     }
   }
 
@@ -118,11 +146,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           appBar: AppBar(
             title: const Text('xLights Layout Viewer'),
             actions: [
-              TextButton.icon(
-                onPressed: _busy ? null : _loadFiles,
-                icon: const Icon(Icons.folder_open),
-                label: const Text('Load files'),
-              ),
+              _LoadMenuButton(enabled: !_busy, onSelected: _load),
               IconButton(
                 tooltip: 'Print / export PDF',
                 onPressed: _busy || !store.hasData ? null : _print,
@@ -155,7 +179,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                     LayoutPreviewTab(key: _previewKey, store: store),
                   ],
                 )
-              : _EmptyState(onLoad: _loadFiles),
+              : _EmptyState(onLoad: _load),
           bottomNavigationBar: const _Footer(),
         );
       },
@@ -190,16 +214,59 @@ class _Footer extends StatelessWidget {
   }
 }
 
+class _LoadMenuButton extends StatelessWidget {
+  const _LoadMenuButton({required this.enabled, required this.onSelected});
+
+  final bool enabled;
+  final ValueChanged<LoadSource> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.primary;
+    return PopupMenuButton<LoadSource>(
+      enabled: enabled,
+      tooltip: 'Load show files',
+      onSelected: onSelected,
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: LoadSource.device,
+          child: ListTile(leading: Icon(Icons.folder_open), title: Text('From this device')),
+        ),
+        PopupMenuItem(
+          value: LoadSource.github,
+          child: ListTile(leading: Icon(Icons.code), title: Text('From GitHub')),
+        ),
+        PopupMenuItem(
+          value: LoadSource.googleDrive,
+          child: ListTile(leading: Icon(Icons.add_to_drive), title: Text('From Google Drive')),
+        ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.folder_open, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text('Load files', style: TextStyle(color: color)),
+            Icon(Icons.arrow_drop_down, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onLoad});
 
-  final VoidCallback onLoad;
+  final ValueChanged<LoadSource> onLoad;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -216,9 +283,27 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: onLoad,
+              onPressed: () => onLoad(LoadSource.device),
               icon: const Icon(Icons.folder_open),
               label: const Text('Load files'),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => onLoad(LoadSource.github),
+                  icon: const Icon(Icons.code),
+                  label: const Text('From GitHub'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => onLoad(LoadSource.googleDrive),
+                  icon: const Icon(Icons.add_to_drive),
+                  label: const Text('From Google Drive'),
+                ),
+              ],
             ),
           ],
         ),
