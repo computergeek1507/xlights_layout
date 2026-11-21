@@ -49,11 +49,12 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   /// Loads show files from [source] and routes each to the right loader.
   Future<void> _load(LoadSource source) async {
-    final List<RemoteFile>? files = switch (source) {
-      LoadSource.device => await _pickLocalFiles(),
-      LoadSource.github => await showGitHubLoadDialog(context),
-      LoadSource.googleDrive => await showDriveLoadDialog(context),
+    final Future<List<RemoteFile>?> pending = switch (source) {
+      LoadSource.device => _pickLocalFiles(),
+      LoadSource.github => showGitHubLoadDialog(context),
+      LoadSource.googleDrive => showDriveLoadDialog(context),
     };
+    final files = await pending;
     if (files == null || files.isEmpty) return;
     _ingest(files);
   }

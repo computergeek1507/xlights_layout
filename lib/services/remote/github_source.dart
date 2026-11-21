@@ -259,7 +259,7 @@ class GitHubSource {
   }
 
   static String _subtitle(bool hasNetworks, String? ref) => [
-        if (ref != null) ref,
+        ?ref,
         hasNetworks ? 'rgbeffects + networks' : 'rgbeffects only',
       ].join(' · ');
 
