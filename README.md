@@ -55,7 +55,7 @@ Drive needs an OAuth client you own:
    - **Web application** — add `https://computergeek1507.github.io` (and
      `http://localhost:<port>` for `flutter run -d chrome --web-port <port>`) as an
      authorized JavaScript origin.
-   - **Android** — package `com.example.xlights_layout` (or your applicationId) and your signing SHA-1.
+   - **Android** — package `com.scoot.xlights_layout` and your signing SHA-1.
    - **iOS** (also used for macOS) — your bundle ID. Add its reversed client ID as a URL scheme in
      `ios/Runner/Info.plist` / `macos/Runner/Info.plist` per the
      [google_sign_in docs](https://pub.dev/packages/google_sign_in).
